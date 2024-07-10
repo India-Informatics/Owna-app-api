@@ -1,0 +1,21 @@
+{
+  "name": "api_tests",
+  "version": "1.0.0",
+  "main": "index.js",
+  "license": "UNLICENSED",
+  "scripts": {
+    "test": "jest",
+    "test:watch": "jest --watch"
+  },
+  "dependencies": {
+    "aws-amplify": "^5.3.3",
+    "config": "3.3.8",
+    "jest": "^29.6.1",
+    "supertest": "^6.3.3"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.22.8",
+    "@babel/preset-env": "^7.22.7",
+    "babel-jest": "^29.6.1"
+  }
+}

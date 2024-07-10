@@ -1,0 +1,26 @@
+{
+  "compilerOptions": {
+    "target": "ES2018",
+    "module": "commonjs",
+    "lib": ["es2018"],
+    "declaration": true,
+    "strict": true,
+    "esModuleInterop": true,
+    "typeRoots": ["./node_modules/@types"]
+  },
+  "include": [
+    "bin/**/*",
+    "common/**/*",
+    "config/**/*",
+    "lib/**/*",
+    "utils/**/*",
+    "solta-cdk/**/*",
+    "tests/**/*",
+    "setupTests.ts",
+    ".eslintrc.js",
+    ".lintstagedrc.js",
+    "jest.config*.js",
+    "types.ts",
+    "types.ts"
+  ]
+}

@@ -1,0 +1,129 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: CloudFormation template for provisioning Owna loadbalancer
+Parameters:
+  NetworkStackName:
+    Type: String
+    Description: The CF stack name of the network stack
+  ClusterStackName:
+    Type: String
+    Description: The name of cluster where this service reside
+Resources:
+  ExternalLoadbalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      LoadBalancerAttributes:
+        # this is the default, but is specified here in case it needs to be changed
+        - Key: idle_timeout.timeout_seconds
+          Value: '60'
+      Name: owna-public-alb
+      Scheme: internet-facing
+      SecurityGroups:
+        - Fn::ImportValue: !Sub ${ClusterStackName}-ExternalLoadBalancerSecurityGroup
+      Subnets:
+        - Fn::ImportValue: !Sub ${NetworkStackName}-PublicSubnet1
+        - Fn::ImportValue: !Sub ${NetworkStackName}-PublicSubnet2
+        - Fn::ImportValue: !Sub ${NetworkStackName}-PublicSubnet3
+
+  ExternalAlbHttpsListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions:
+        - Type: redirect
+          RedirectConfig:
+            Protocol: 'HTTPS'
+            Port: '443'
+            Host: 'soltalabs.com'
+            Path: '/'
+            Query: ''
+            StatusCode: 'HTTP_301'
+      LoadBalancerArn: !Ref ExternalLoadbalancer
+      Port: 443
+      Protocol: HTTPS
+      Certificates:
+        - CertificateArn:
+            Fn::ImportValue: !Sub ${ClusterStackName}-ACMCert
+
+  InternalLoadbalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      LoadBalancerAttributes:
+        # this is the default, but is specified here in case it needs to be changed
+        - Key: idle_timeout.timeout_seconds
+          Value: '60'
+      Name: owna-internal-alb
+      Scheme: internal
+      SecurityGroups:
+        - Fn::ImportValue: !Sub ${ClusterStackName}-InternalLoadBalancerSecurityGroup
+      Subnets:
+        - Fn::ImportValue: !Sub ${NetworkStackName}-PrivateSubnet1
+        - Fn::ImportValue: !Sub ${NetworkStackName}-PrivateSubnet2
+        - Fn::ImportValue: !Sub ${NetworkStackName}-PrivateSubnet3
+  InternalAlbHttpListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions:
+        - Type: fixed-response
+          FixedResponseConfig:
+            ContentType: application/json
+            MessageBody: '{}'
+            StatusCode: '204'
+      LoadBalancerArn: !Ref InternalLoadbalancer
+      Port: 80
+      Protocol: HTTP
+
+  ExternalAlbHttpsListenerParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /owna/alb/external_https_listener_arn
+      Type: String
+      Value: !Ref ExternalAlbHttpsListener
+
+Outputs:
+  ExternalLoadBalancer:
+    Description: Internet-facing Load balancers
+    Value: !Ref ExternalLoadbalancer
+    Export:
+      Name:
+        Fn::Sub: ${AWS::StackName}-ExternalLoadbalancer
+  ExternalLoadbalancerDNSName:
+    Description: DNS name of the external load balancers
+    Value: !GetAtt ExternalLoadbalancer.DNSName
+    Export:
+      Name:
+        Fn::Sub: ${AWS::StackName}-ExternalLoadbalancerDNSName
+  ExternalLoadbalancerHostedZoneId:
+    Description: The hosted zone id of the external load balancers
+    Value: !GetAtt ExternalLoadbalancer.CanonicalHostedZoneID
+    Export:
+      Name:
+        Fn::Sub: ${AWS::StackName}-ExternalLoadbalancerHostedZoneId
+  ExternalAlbHttpsListener:
+    Description: The https listener for the external load balancer
+    Value: !Ref ExternalAlbHttpsListener
+    Export:
+      Name:
+        Fn::Sub: ${AWS::StackName}-ExternalAlbHttpsListener
+  InternalLoadBalancer:
+    Description: Internal-facing Load balancers
+    Value: !Ref InternalLoadbalancer
+    Export:
+      Name:
+        Fn::Sub: ${AWS::StackName}-InternalLoadbalancer
+  InternalLoadbalancerDNSName:
+    Description: DNS name of the external load balancers
+    Value: !GetAtt InternalLoadbalancer.DNSName
+    Export:
+      Name:
+        Fn::Sub: ${AWS::StackName}-InternalLoadbalancerDNSName
+  InternalLoadbalancerHostedZoneId:
+    Description: The hosted zone id of the external load balancers
+    Value: !GetAtt InternalLoadbalancer.CanonicalHostedZoneID
+    Export:
+      Name:
+        Fn::Sub: ${AWS::StackName}-InternalLoadbalancerHostedZoneId
+  InternalAlbHttpListener:
+    Description: The https listener for the external load balancer
+    Value: !Ref InternalAlbHttpListener
+    Export:
+      Name:
+        Fn::Sub: ${AWS::StackName}-InternalAlbHttpListener

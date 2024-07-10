@@ -1,0 +1,449 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`CognitoStack Synthesis snapshot 1`] = `
+Object {
+  "Outputs": Object {
+    "AuthAppUserPoolClientIdOutput": Object {
+      "Export": Object {
+        "Name": "test-midas-cognito-AuthAppUserPoolClientId",
+      },
+      "Value": Object {
+        "Ref": "AuthAppUserPoolClient5A6085AF",
+      },
+    },
+    "IdentityServiceUserPoolClientIdOutput": Object {
+      "Export": Object {
+        "Name": "test-midas-cognito-IdentityServiceUserPoolClientId",
+      },
+      "Value": Object {
+        "Ref": "IdentityServiceUserPoolClientE9AA235E",
+      },
+    },
+    "MerchantWalletAppUserPoolClientIdOutput": Object {
+      "Export": Object {
+        "Name": "test-midas-cognito-MerchantWalletAppUserPoolClientId",
+      },
+      "Value": Object {
+        "Ref": "MerchantWalletAppUserPoolClientEAD27430",
+      },
+    },
+    "SoltaWalletAppUserPoolClientIdOutput": Object {
+      "Export": Object {
+        "Name": "test-midas-cognito-SoltaWalletAppUserPoolClientId",
+      },
+      "Value": Object {
+        "Ref": "SoltaWalletAppUserPoolClient11676A24",
+      },
+    },
+    "UserPoolArnOutput": Object {
+      "Export": Object {
+        "Name": "test-midas-cognito-UserPoolArn",
+      },
+      "Value": Object {
+        "Fn::GetAtt": Array [
+          "UserPool6BA7E5F2",
+          "Arn",
+        ],
+      },
+    },
+    "UserPoolDomainOutput": Object {
+      "Export": Object {
+        "Name": "test-midas-cognito-UserPoolDomain",
+      },
+      "Value": Object {
+        "Ref": "UserPoolDomain5479B217",
+      },
+    },
+    "UserPoolIdOutput": Object {
+      "Export": Object {
+        "Name": "test-midas-cognito-UserPoolId",
+      },
+      "Value": Object {
+        "Ref": "UserPool6BA7E5F2",
+      },
+    },
+  },
+  "Parameters": Object {
+    "BootstrapVersion": Object {
+      "Default": "/cdk-bootstrap/hnb659fds/version",
+      "Description": "Version of the CDK Bootstrap resources in this environment, automatically retrieved from SSM Parameter Store. [cdk:skip]",
+      "Type": "AWS::SSM::Parameter::Value<String>",
+    },
+  },
+  "Resources": Object {
+    "AuthAppUserPoolClient5A6085AF": Object {
+      "Properties": Object {
+        "AllowedOAuthFlows": Array [
+          "code",
+        ],
+        "AllowedOAuthFlowsUserPoolClient": true,
+        "AllowedOAuthScopes": Array [
+          "phone",
+          "email",
+          "openid",
+          "profile",
+        ],
+        "CallbackURLs": Array [
+          Object {
+            "Ref": "AWS::NoValue",
+          },
+          "https://auth.midas.soltalabs.test/callback",
+        ],
+        "ClientName": "test-midas-auth-app-client",
+        "GenerateSecret": false,
+        "PreventUserExistenceErrors": "ENABLED",
+        "SupportedIdentityProviders": Array [
+          "COGNITO",
+        ],
+        "UserPoolId": Object {
+          "Ref": "UserPool6BA7E5F2",
+        },
+        "WriteAttributes": Array [
+          "email",
+          "name",
+          "phone_number",
+        ],
+      },
+      "Type": "AWS::Cognito::UserPoolClient",
+    },
+    "CognitoSNSRoleEDBAE792": Object {
+      "Properties": Object {
+        "AssumeRolePolicyDocument": Object {
+          "Statement": Array [
+            Object {
+              "Action": "sts:AssumeRole",
+              "Effect": "Allow",
+              "Principal": Object {
+                "Service": "cognito-idp.amazonaws.com",
+              },
+            },
+          ],
+          "Version": "2012-10-17",
+        },
+        "Policies": Array [
+          Object {
+            "PolicyDocument": Object {
+              "Statement": Array [
+                Object {
+                  "Action": "sns:publish",
+                  "Effect": "Allow",
+                  "Resource": "*",
+                },
+              ],
+              "Version": "2012-10-17",
+            },
+            "PolicyName": "CognitoSNSPolicy",
+          },
+        ],
+      },
+      "Type": "AWS::IAM::Role",
+    },
+    "IdentityServiceUserPoolClientE9AA235E": Object {
+      "DependsOn": Array [
+        "IdentityServiceUserPoolResourceServerE70727C4",
+      ],
+      "Properties": Object {
+        "AllowedOAuthFlows": Array [
+          "client_credentials",
+        ],
+        "AllowedOAuthFlowsUserPoolClient": true,
+        "AllowedOAuthScopes": Array [
+          "https://identity.midas.soltalabs.test/accessKey:create",
+          "https://identity.midas.soltalabs.test/accessKey:validate",
+          "https://identity.midas.soltalabs.test/identity:create",
+          "https://identity.midas.soltalabs.test/identity:read",
+          "https://identity.midas.soltalabs.test/invitation:create",
+          "https://identity.midas.soltalabs.test/invitation:accept",
+          "https://identity.midas.soltalabs.test/invitation:read",
+        ],
+        "CallbackURLs": Array [
+          Object {
+            "Ref": "AWS::NoValue",
+          },
+          "https://auth.midas.soltalabs.test/callback",
+        ],
+        "ClientName": "test-midas-identity-service-client",
+        "GenerateSecret": true,
+        "PreventUserExistenceErrors": "ENABLED",
+        "SupportedIdentityProviders": Array [
+          "COGNITO",
+        ],
+        "UserPoolId": Object {
+          "Ref": "UserPool6BA7E5F2",
+        },
+        "WriteAttributes": Array [
+          "email",
+          "name",
+          "phone_number",
+        ],
+      },
+      "Type": "AWS::Cognito::UserPoolClient",
+    },
+    "IdentityServiceUserPoolResourceServerE70727C4": Object {
+      "Properties": Object {
+        "Identifier": "https://identity.midas.soltalabs.test",
+        "Name": "Identity Service",
+        "Scopes": Array [
+          Object {
+            "ScopeDescription": "Create access keys",
+            "ScopeName": "accessKey:create",
+          },
+          Object {
+            "ScopeDescription": "Validate access keys",
+            "ScopeName": "accessKey:validate",
+          },
+          Object {
+            "ScopeDescription": "Create identities",
+            "ScopeName": "identity:create",
+          },
+          Object {
+            "ScopeDescription": "Read identities",
+            "ScopeName": "identity:read",
+          },
+          Object {
+            "ScopeDescription": "Scope for platform access",
+            "ScopeName": "identity:platform-access",
+          },
+          Object {
+            "ScopeDescription": "Create invitations",
+            "ScopeName": "invitation:create",
+          },
+          Object {
+            "ScopeDescription": "Accept invitations",
+            "ScopeName": "invitation:accept",
+          },
+          Object {
+            "ScopeDescription": "Read invitations",
+            "ScopeName": "invitation:read",
+          },
+        ],
+        "UserPoolId": Object {
+          "Ref": "UserPool6BA7E5F2",
+        },
+      },
+      "Type": "AWS::Cognito::UserPoolResourceServer",
+    },
+    "MerchantWalletAppUserPoolClientEAD27430": Object {
+      "Properties": Object {
+        "AllowedOAuthFlows": Array [
+          "code",
+        ],
+        "AllowedOAuthFlowsUserPoolClient": true,
+        "AllowedOAuthScopes": Array [
+          "phone",
+          "email",
+          "openid",
+          "profile",
+        ],
+        "CallbackURLs": Array [
+          "myapp://auth",
+        ],
+        "ClientName": "test-midas-merchant-wallet-app-client",
+        "GenerateSecret": false,
+        "LogoutURLs": Array [
+          "myapp://auth",
+        ],
+        "PreventUserExistenceErrors": "ENABLED",
+        "SupportedIdentityProviders": Array [
+          "COGNITO",
+        ],
+        "UserPoolId": Object {
+          "Ref": "UserPool6BA7E5F2",
+        },
+        "WriteAttributes": Array [
+          "email",
+          "name",
+          "phone_number",
+        ],
+      },
+      "Type": "AWS::Cognito::UserPoolClient",
+    },
+    "SoltaWalletAppUserPoolClient11676A24": Object {
+      "DependsOn": Array [
+        "IdentityServiceUserPoolResourceServerE70727C4",
+      ],
+      "Properties": Object {
+        "AllowedOAuthFlows": Array [
+          "code",
+        ],
+        "AllowedOAuthFlowsUserPoolClient": true,
+        "AllowedOAuthScopes": Array [
+          "phone",
+          "email",
+          "openid",
+          "profile",
+        ],
+        "CallbackURLs": Array [
+          "myapp://auth",
+        ],
+        "ClientName": "test-midas-solta-wallet-app-client",
+        "GenerateSecret": false,
+        "LogoutURLs": Array [
+          "myapp://auth",
+        ],
+        "PreventUserExistenceErrors": "ENABLED",
+        "SupportedIdentityProviders": Array [
+          "COGNITO",
+        ],
+        "UserPoolId": Object {
+          "Ref": "UserPool6BA7E5F2",
+        },
+        "WriteAttributes": Array [
+          "email",
+          "name",
+          "phone_number",
+        ],
+      },
+      "Type": "AWS::Cognito::UserPoolClient",
+    },
+    "UserPool6BA7E5F2": Object {
+      "DeletionPolicy": "Retain",
+      "Properties": Object {
+        "AccountRecoverySetting": Object {
+          "RecoveryMechanisms": Array [
+            Object {
+              "Name": "verified_email",
+              "Priority": 1,
+            },
+            Object {
+              "Name": "verified_phone_number",
+              "Priority": 2,
+            },
+          ],
+        },
+        "AdminCreateUserConfig": Object {
+          "AllowAdminCreateUserOnly": false,
+        },
+        "AutoVerifiedAttributes": Array [
+          "email",
+          "phone_number",
+        ],
+        "DeviceConfiguration": Object {
+          "ChallengeRequiredOnNewDevice": true,
+          "DeviceOnlyRememberedOnUserPrompt": true,
+        },
+        "EmailConfiguration": Object {
+          "EmailSendingAccount": "DEVELOPER",
+          "From": "Solta Cloud Test <noreply@soltalabs.test>",
+          "ReplyToEmailAddress": "noreply@soltalabs.test",
+          "SourceArn": Object {
+            "Fn::Join": Array [
+              "",
+              Array [
+                "arn:",
+                Object {
+                  "Ref": "AWS::Partition",
+                },
+                ":ses:us-west-2:041248125718:identity/noreply@soltalabs.test",
+              ],
+            ],
+          },
+        },
+        "EmailVerificationMessage": "The verification code to your new account is {####}",
+        "EmailVerificationSubject": "Verify your new account",
+        "EnabledMfas": Array [
+          "SMS_MFA",
+          "SOFTWARE_TOKEN_MFA",
+        ],
+        "MfaConfiguration": "OPTIONAL",
+        "Policies": Object {
+          "PasswordPolicy": Object {
+            "MinimumLength": 8,
+            "RequireLowercase": true,
+            "RequireNumbers": true,
+            "RequireSymbols": false,
+            "RequireUppercase": true,
+            "TemporaryPasswordValidityDays": 2,
+          },
+        },
+        "Schema": Array [
+          Object {
+            "Mutable": true,
+            "Name": "name",
+            "Required": true,
+          },
+          Object {
+            "Mutable": false,
+            "Name": "phone_number",
+            "Required": false,
+          },
+          Object {
+            "Mutable": true,
+            "Name": "email",
+            "Required": true,
+          },
+          Object {
+            "AttributeDataType": "String",
+            "Mutable": true,
+            "Name": "preferred_name",
+          },
+        ],
+        "SmsConfiguration": Object {
+          "ExternalId": "test-midas-external",
+          "SnsCallerArn": Object {
+            "Fn::GetAtt": Array [
+              "CognitoSNSRoleEDBAE792",
+              "Arn",
+            ],
+          },
+        },
+        "SmsVerificationMessage": "The verification code to your new account is {####}",
+        "UserPoolAddOns": Object {
+          "AdvancedSecurityMode": "AUDIT",
+        },
+        "UserPoolName": "test-midas-user-pool",
+        "UsernameAttributes": Array [
+          "email",
+        ],
+        "UsernameConfiguration": Object {
+          "CaseSensitive": false,
+        },
+        "VerificationMessageTemplate": Object {
+          "DefaultEmailOption": "CONFIRM_WITH_CODE",
+          "EmailMessage": "The verification code to your new account is {####}",
+          "EmailSubject": "Verify your new account",
+          "SmsMessage": "The verification code to your new account is {####}",
+        },
+      },
+      "Type": "AWS::Cognito::UserPool",
+      "UpdateReplacePolicy": "Retain",
+    },
+    "UserPoolDomain5479B217": Object {
+      "Properties": Object {
+        "Domain": "test-midas",
+        "UserPoolId": Object {
+          "Ref": "UserPool6BA7E5F2",
+        },
+      },
+      "Type": "AWS::Cognito::UserPoolDomain",
+    },
+  },
+  "Rules": Object {
+    "CheckBootstrapVersion": Object {
+      "Assertions": Array [
+        Object {
+          "Assert": Object {
+            "Fn::Not": Array [
+              Object {
+                "Fn::Contains": Array [
+                  Array [
+                    "1",
+                    "2",
+                    "3",
+                    "4",
+                    "5",
+                  ],
+                  Object {
+                    "Ref": "BootstrapVersion",
+                  },
+                ],
+              },
+            ],
+          },
+          "AssertDescription": "CDK bootstrap stack version 6 required. Please run 'cdk bootstrap' with a recent version of the CDK CLI.",
+        },
+      ],
+    },
+  },
+}
+`;

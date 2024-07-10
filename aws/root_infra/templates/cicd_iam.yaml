@@ -1,0 +1,261 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: CloudFormation template for provisioning Midas CICD Roles / Permission
+Parameters:
+  EnvName:
+    Type: String
+    Description: the environment prefix
+    Default: dev
+  HostedZoneId:
+    Type: String
+    AllowedPattern: '[A-Za-z0-9]+'
+    Description: ID of the hosted zone to grant permissions for the policies
+Resources:
+  MidasCICDRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      RoleName: MidasCICDRole
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS: !Sub arn:aws:iam::${AWS::AccountId}:root
+            Action:
+              - 'sts:AssumeRole'
+              - 'sts:TagSession'
+            Condition:
+              StringLike:
+                'aws:username':
+                  - github
+
+  MidasGeneralIAMDeployment:
+    Type: 'AWS::IAM::Policy'
+    Properties:
+      PolicyName: MidasGeneralIAMDeployment
+      Roles:
+        - !Ref MidasCICDRole
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action:
+              - iam:CreateServiceLinkedRole
+            Resource:
+              - !Sub arn:aws:iam::${AWS::AccountId}:role/aws-service-role/ops.apigateway.amazonaws.com/AWSServiceRoleForAPIGateway
+          - Effect: Allow
+            Action:
+              - iam:CreateRole
+              - iam:DeleteRole*
+              - iam:AttachRolePolicy
+              - iam:DetachRolePolicy
+              - iam:GetRole*
+              - iam:ListRoleTags
+              - iam:PutRolePolicy
+              - iam:PassRole
+              - iam:TagRole
+              - iam:UntagRole
+            Resource:
+              - !Sub arn:aws:iam::${AWS::AccountId}:role/midas-*
+              - !Sub arn:aws:iam::${AWS::AccountId}:role/${EnvName}-midas-cognito-*
+  MidasStorageForDeployment:
+    Type: 'AWS::IAM::Policy'
+    Properties:
+      PolicyName: MidasStorageForDeployment
+      Roles:
+        - !Ref MidasCICDRole
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action:
+              - s3:ListBucket
+              - s3:Get*
+              - s3:DeleteObject*
+              - s3:PutObject*
+            Resource:
+              - !Sub arn:aws:s3:::${EnvName}-midas-*
+              - !Sub arn:aws:s3:::${EnvName}-midas-*/*
+  MidasSpaDeployment:
+    Type: 'AWS::IAM::Policy'
+    Properties:
+      PolicyName: MidasSpaDeployment
+      Roles:
+        - !Ref MidasCICDRole
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action:
+              - cloudfront:GetDistribution
+              - cloudfront:CreateInvalidation
+            Resource: '*'
+  MidasEcsDeployment:
+    Type: 'AWS::IAM::Policy'
+    Properties:
+      PolicyName: MidasEcsDeployment
+      Roles:
+        - !Ref MidasCICDRole
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action:
+              - ecr:GetAuthorizationToken
+              - ecr:BatchCheckLayerAvailability
+              - ecr:GetDownloadUrlForLayer
+              - ecr:GetRepositoryPolicy
+              - ecr:DescribeRepositories
+              - ecr:ListImages
+              - ecr:DescribeImages
+              - ecr:BatchGetImage
+              - ecr:GetLifecyclePolicy*
+              - ecr:ListTagsForResource
+              - ecr:DescribeImageScanFindings
+              - ecr:InitiateLayerUpload
+              - ecr:CompleteLayerUpload
+              - ecr:PutImage
+              - ecr:UploadLayerPart
+            Resource: '*'
+          - Effect: Allow
+            Action:
+              - ecs:RegisterTaskDefinition
+              - ecs:List*
+              - ecs:Describe*
+              - ecs:UpdateService
+            Resource: '*'
+  MidasServerlessDeployment:
+    Type: 'AWS::IAM::Policy'
+    Properties:
+      PolicyName: MidasServerlessDeployment
+      Roles:
+        - !Ref MidasCICDRole
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action:
+              - cloudformation:CreateStack
+              - cloudformation:DescribeStack*
+              - cloudformation:ListStack*
+              - cloudformation:DeleteStack
+              - cloudformation:UpdateStack
+            Resource:
+              - !Sub arn:aws:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/midas-*
+              - !Sub arn:aws:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/${EnvName}-midas-*
+              - !Sub arn:aws:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/${EnvName}-vpc/*
+          - Effect: Allow
+            Action:
+              - cloudformation:ValidateTemplate
+            Resource: '*'
+          - Effect: Allow
+            Action:
+              - sqs:*
+            Resource:
+              - !Sub arn:aws:sqs:${AWS::Region}:${AWS::AccountId}:${EnvName}-midas-*
+          - Effect: Allow
+            Action:
+              - sns:*
+            Resource:
+              - !Sub arn:aws:sns:${AWS::Region}:${AWS::AccountId}:${EnvName}-midas-*
+          - Effect: Allow
+            Action:
+              - events:*
+            Resource:
+              - !Sub arn:aws:events:${AWS::Region}:${AWS::AccountId}:rule/${EnvName}-midas-*
+          - Effect: Allow
+            Action:
+              - lambda:GetFunction
+              - lambda:GetFunctionConfiguration
+              - lambda:CreateFunction
+              - lambda:DeleteFunction
+              - lambda:UpdateFunctionConfiguration
+              - lambda:UpdateFunctionCode
+              - lambda:AddPermission
+              - lambda:RemovePermission
+              - lambda:CreateAlias
+              - lambda:DeleteAlias
+              - lambda:UpdateAlias
+              - lambda:InvokeFunction
+              - lambda:ListVersionsByFunction
+              - lambda:PublishVersion
+              - lambda:PutFunctionConcurrency
+              - lambda:ListTags
+            Resource:
+              - !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${EnvName}-midas-*
+              - !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:midas-*
+          - Effect: Allow
+            Action:
+              - lambda:CreateEventSourceMapping
+              - lambda:DeleteEventSourceMapping
+              - lambda:GetEventSourceMapping
+            Resource: '*'
+          - Effect: Allow
+            Action:
+              - apigateway:GET
+              - apigateway:PATCH
+              - apigateway:POST
+              - apigateway:PUT
+              - apigateway:DELETE
+            Resource:
+              - arn:aws:apigateway:*::/restapis*
+              - !Sub arn:aws:apigateway:${AWS::Region}::/account*
+              - !Sub arn:aws:apigateway:${AWS::Region}::/tags*
+              - !Sub arn:aws:apigateway:${AWS::Region}::/vpclinks*
+          - Effect: Allow
+            Action:
+              - logs:Describe*
+              - logs:CreateLogGroup
+              - logs:DeleteLogGroup
+              - logs:PutRetentionPolicy
+            Resource:
+              - !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/${EnvName}-midas-*
+          - Effect: Allow
+            Action:
+              - cloudwatch:PutMetricAlarm
+              - cloudwatch:DeleteAlarms
+            Resource:
+              - !Sub arn:aws:cloudwatch:${AWS::Region}:${AWS::AccountId}:alarm:midas-*
+          - Effect: Allow
+            Action:
+              - ec2:Describe*
+            Resource: '*'
+  MidasKmsSsmUsage:
+    Type: 'AWS::IAM::Policy'
+    Properties:
+      PolicyName: MidasKmsSsmUsage
+      Roles:
+        - !Ref MidasCICDRole
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action:
+              - kms:Decrypt
+              - kms:GenerateDataKey*
+              - kms:DescribeKey
+            Resource:
+              - !Sub arn:aws:kms:${AWS::Region}:${AWS::AccountId}:key/*
+            Condition:
+              ForAnyValue:StringLike:
+                'kms:ResourceAliases': 'alias/Midas*'
+          - Effect: Allow
+            Action:
+              - ssm:GetParameters
+              - ssm:GetParameter
+            Resource:
+              - !Sub arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/midas-*
+              - !Sub arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/midas/*
+
+Outputs:
+  MidasGeneralIAMDeployment:
+    Value: !Ref MidasGeneralIAMDeployment
+  MidasStorageForDeployment:
+    Value: !Ref MidasStorageForDeployment
+  MidasSpaDeployment:
+    Value: !Ref MidasSpaDeployment
+  MidasEcsDeployment:
+    Value: !Ref MidasEcsDeployment
+  MidasServerlessDeployment:
+    Value: !Ref MidasServerlessDeployment
+  MidasKmsSsmUsage:
+    Value: !Ref MidasKmsSsmUsage

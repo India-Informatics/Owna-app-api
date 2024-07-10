@@ -1,0 +1,74 @@
+{
+  "vpc-provider:account=035731147566:filter.vpc-id=vpc-0a0157a1ea2f20fec:region=ap-southeast-2:returnAsymmetricSubnets=true": {
+    "vpcId": "vpc-0a0157a1ea2f20fec",
+    "vpcCidrBlock": "10.0.0.0/16",
+    "availabilityZones": [],
+    "subnetGroups": [
+      {
+        "name": "Public",
+        "type": "Public",
+        "subnets": [
+          {
+            "subnetId": "subnet-0dff7d17e26925627",
+            "cidr": "10.0.10.0/24",
+            "availabilityZone": "ap-southeast-2a",
+            "routeTableId": "rtb-06b784ef94e8664d6"
+          },
+          {
+            "subnetId": "subnet-0fcf3c1c849cc0014",
+            "cidr": "10.0.20.0/24",
+            "availabilityZone": "ap-southeast-2b",
+            "routeTableId": "rtb-06b784ef94e8664d6"
+          },
+          {
+            "subnetId": "subnet-0b53a6107af1505c4",
+            "cidr": "10.0.30.0/24",
+            "availabilityZone": "ap-southeast-2c",
+            "routeTableId": "rtb-06b784ef94e8664d6"
+          }
+        ]
+      },
+      {
+        "name": "Private",
+        "type": "Private",
+        "subnets": [
+          {
+            "subnetId": "subnet-07898eaccbe169fe4",
+            "cidr": "10.0.11.0/24",
+            "availabilityZone": "ap-southeast-2a",
+            "routeTableId": "rtb-08758ea0eb75987f9"
+          },
+          {
+            "subnetId": "subnet-0f85153fc58a5f239",
+            "cidr": "10.0.21.0/24",
+            "availabilityZone": "ap-southeast-2b",
+            "routeTableId": "rtb-08758ea0eb75987f9"
+          },
+          {
+            "subnetId": "subnet-0fcf8cfc2127ede02",
+            "cidr": "10.0.31.0/24",
+            "availabilityZone": "ap-southeast-2c",
+            "routeTableId": "rtb-08758ea0eb75987f9"
+          }
+        ]
+      }
+    ]
+  },
+  "ssm:account=035731147566:parameterName=/owna/alb/external_https_listener_arn:region=ap-southeast-2": "arn:aws:elasticloadbalancing:ap-southeast-2:035731147566:listener/app/owna-public-alb/c31efc2db10c60d0/66dbc76e6aa8be9a",
+  "ssm:account=035731147566:parameterName=/owna/cluster/acm_cert_arn:region=ap-southeast-2": "arn:aws:acm:ap-southeast-2:035731147566:certificate/fc1a6d68-132f-455b-ab20-cc95336678e0",
+  "security-group:account=035731147566:region=ap-southeast-2:securityGroupName=prod-owna services:vpcId=vpc-0a0157a1ea2f20fec": {
+    "securityGroupId": "sg-081beb0150cd203e9",
+    "allowAllOutbound": false
+  },
+  "load-balancer-listener:account=035731147566:listenerArn=arn$:aws:elasticloadbalancing:ap-southeast-2:035731147566:listener/app/owna-public-alb/c31efc2db10c60d0/66dbc76e6aa8be9a:loadBalancerType=application:region=ap-southeast-2": {
+    "listenerArn": "arn:aws:elasticloadbalancing:ap-southeast-2:035731147566:listener/app/owna-public-alb/c31efc2db10c60d0/66dbc76e6aa8be9a",
+    "listenerPort": 443,
+    "securityGroupIds": [
+      "sg-09c2df0c1a037d272"
+    ]
+  },
+  "security-group:account=035731147566:region=ap-southeast-2:securityGroupId=sg-09c2df0c1a037d272": {
+    "securityGroupId": "sg-09c2df0c1a037d272",
+    "allowAllOutbound": false
+  }
+}

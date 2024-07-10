@@ -1,0 +1,410 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: CloudFormation template for provisioning Owna services
+Parameters:
+  NetworkStackName:
+    Type: String
+    Description: The name of the network stack (VPC)
+  ClusterName:
+    Type: String
+  IncludesLocalhost:
+    Type: String
+    Description: Configuration to include localhost
+    Default: false
+    AllowedValues: [true, false]
+  ApiSubdomain:
+    Type: String
+    Default: 'api'
+  HostedZoneName:
+    Type: String
+  HostedZoneId:
+    Type: String
+  EcrLifeCyclePolicyText:
+    Type: String
+    Default: |
+      {
+        "rules": [
+          {
+            "rulePriority": 5,
+            "description": "Expire images after 5 count",
+            "selection": {
+              "tagStatus": "any",
+              "countType": "imageCountMoreThan",
+              "countNumber": 5
+            },
+            "action": {
+              "type": "expire"
+            }
+          }
+        ]
+      }
+  KeyAdminArn:
+    Type: String
+
+Conditions:
+  ShouldIncludeLocalhostInServiceBucketCorsConfiguration:
+    !Equals [true, !Ref IncludesLocalhost]
+
+Resources:
+  Cluster:
+    Type: AWS::ECS::Cluster
+    Properties:
+      ClusterName: !Join ['-', [!Ref ClusterName, cluster]]
+      ClusterSettings:
+        - Name: containerInsights
+          Value: enabled
+      CapacityProviders:
+        - FARGATE
+        - FARGATE_SPOT
+      DefaultCapacityProviderStrategy:
+        - CapacityProvider: FARGATE_SPOT
+          Weight: 2
+          Base: 1
+        - CapacityProvider: FARGATE
+          Weight: 1
+
+  ACMCert:
+    Type: 'AWS::CertificateManager::Certificate'
+    Properties:
+      DomainName: !Join ['.', [!Ref ApiSubdomain, !Ref HostedZoneName]]
+      SubjectAlternativeNames:
+        - !Join ['.', ['*', !Ref ApiSubdomain, !Ref HostedZoneName]]
+      ValidationMethod: DNS
+      DomainValidationOptions:
+        - DomainName: !Join ['.', [!Ref ApiSubdomain, !Ref HostedZoneName]]
+          HostedZoneId: !Ref HostedZoneId
+
+  ServerlessDeploymentsBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      BucketName: !Join ['-', [!Ref ClusterName, serverless-deployments]]
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      AccessControl: Private
+
+  UserContentsBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      BucketName: !Join ['-', [!Ref ClusterName, user-contents]]
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      AccessControl: Private
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: 'aws:kms'
+              KMSMasterKeyID: !GetAtt UserContentsKey.Arn
+            BucketKeyEnabled: true
+      LifecycleConfiguration:
+        Rules:
+          - Id: IntelligentTierRule
+            Status: Enabled
+            Transitions:
+              - TransitionInDays: 30
+                StorageClass: INTELLIGENT_TIERING
+      IntelligentTieringConfigurations:
+        - Id: IntelligentTierConfig
+          Status: Enabled
+          Tierings:
+            - AccessTier: ARCHIVE_ACCESS
+              Days: 90
+      VersioningConfiguration:
+        Status: Enabled
+      CorsConfiguration:
+        CorsRules:
+          - AllowedOrigins:
+              - !If [
+                  ShouldIncludeLocalhostInServiceBucketCorsConfiguration,
+                  'http://localhost:3000',
+                  !Ref 'AWS::NoValue',
+                ]
+              - !If [
+                  ShouldIncludeLocalhostInServiceBucketCorsConfiguration,
+                  'http://localhost:3001',
+                  !Ref 'AWS::NoValue',
+                ]
+              - !If [
+                  ShouldIncludeLocalhostInServiceBucketCorsConfiguration,
+                  'http://localhost:3002',
+                  !Ref 'AWS::NoValue',
+                ]
+              - !Join ['', ['https://*.', !Ref ApiSubdomain, ., !Ref HostedZoneName]]
+              - !Join ['', ['https://*.', !Ref HostedZoneName]]
+
+            AllowedMethods:
+              - POST
+              - GET
+              - PUT
+              - DELETE
+              - HEAD
+            AllowedHeaders:
+              - '*'
+
+  SecretKey:
+    Type: AWS::KMS::Key
+    Properties:
+      Description: Managed key to encrypt and decrypt service secrets
+      Enabled: true
+      EnableKeyRotation: true
+      KeyPolicy:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: Enable IAM User Permissions
+            Effect: Allow
+            Principal:
+              AWS:
+                - !Ref KeyAdminArn
+            Action: kms:*
+            Resource: '*'
+  SecretKeyAlias:
+    Type: AWS::KMS::Alias
+    Properties:
+      AliasName: alias/OwnaSecretsKey
+      TargetKeyId: !GetAtt SecretKey.Arn
+
+  UserContentsKey:
+    Type: AWS::KMS::Key
+    Properties:
+      Description: Managed key to encrypt and decrypt stored user contents
+      Enabled: true
+      EnableKeyRotation: true
+      KeyPolicy:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: Enable IAM User Permissions
+            Effect: Allow
+            Principal:
+              AWS:
+                - !Ref KeyAdminArn
+            Action: kms:*
+            Resource: '*'
+  UserContentsKeyAlias:
+    Type: AWS::KMS::Alias
+    Properties:
+      AliasName: alias/OwnaUserContentsKey
+      TargetKeyId: !GetAtt UserContentsKey.Arn
+
+  MongoDbEncryptionKey:
+    Type: AWS::KMS::Key
+    Properties:
+      Description: Managed key to encrypt and decrypt mongo atlas
+      Enabled: true
+      EnableKeyRotation: true
+      KeyPolicy:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: Enable IAM User Permissions
+            Effect: Allow
+            Principal:
+              AWS:
+                - !Ref KeyAdminArn
+            Action: kms:*
+            Resource: '*'
+  MongoDbEncryptionKeyAlias:
+    Type: AWS::KMS::Alias
+    Properties:
+      AliasName: alias/OwnaMongoDbKey
+      TargetKeyId: !GetAtt MongoDbEncryptionKey.Arn
+
+  ExternalLoadBalancerSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: !Sub ${ClusterName} external alb
+      GroupDescription: !Sub Security group for internet facing load balancers in ${ClusterName}
+      VpcId:
+        Fn::ImportValue:
+          Fn::Sub: ${NetworkStackName}-VpcId
+      SecurityGroupEgress:
+        - IpProtocol: tcp
+          FromPort: 8080
+          ToPort: 8088
+          DestinationSecurityGroupId: !Ref ServicesSecurityGroup
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: !Sub ${ClusterName} external alb security group
+        - Key: env
+          Value: !Ref ClusterName
+
+  InternalLoadBalancerSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: !Sub ${ClusterName} internal alb
+      GroupDescription: !Sub Security group for internal only load balancers in ${ClusterName}
+      VpcId:
+        Fn::ImportValue:
+          Fn::Sub: ${NetworkStackName}-VpcId
+      SecurityGroupEgress:
+        - IpProtocol: tcp
+          FromPort: 8080
+          ToPort: 8088
+          DestinationSecurityGroupId: !Ref ServicesSecurityGroup
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          SourceSecurityGroupId: !Ref ServicesSecurityGroup
+      Tags:
+        - Key: Name
+          Value: !Sub ${ClusterName} internal alb security group
+        - Key: env
+          Value: !Ref ClusterName
+
+  ServicesSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: !Sub ${ClusterName} services
+      GroupDescription: !Sub Security group for services in ${ClusterName}
+      VpcId:
+        Fn::ImportValue:
+          Fn::Sub: ${NetworkStackName}-VpcId
+      Tags:
+        - Key: Name
+          Value: !Sub ${ClusterName} services security group
+        - Key: env
+          Value: !Ref ClusterName
+      SecurityGroupEgress:
+        - IpProtocol: all
+          FromPort: -1
+          ToPort: -1
+          CidrIp: 0.0.0.0/0
+
+  ServicesSecurityGroupInternalIngress808x:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      IpProtocol: tcp
+      FromPort: 8080
+      ToPort: 8088
+      SourceSecurityGroupId: !Ref ServicesSecurityGroup
+      GroupId: !Ref ServicesSecurityGroup
+
+  ServicesSecurityGroupInternalLoadBalancerIngress808x:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      IpProtocol: tcp
+      FromPort: 8080
+      ToPort: 8088
+      SourceSecurityGroupId: !Ref InternalLoadBalancerSecurityGroup
+      GroupId: !Ref ServicesSecurityGroup
+
+  ServicesSecurityGroupExternalLoadBalancerIngress808x:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      IpProtocol: tcp
+      FromPort: 8080
+      ToPort: 8088
+      SourceSecurityGroupId: !Ref ExternalLoadBalancerSecurityGroup
+      GroupId: !Ref ServicesSecurityGroup
+
+  ACMCertParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /owna/cluster/acm_cert_arn
+      Type: String
+      Value: !Ref ACMCert
+
+Outputs:
+  ServerlessDeploymentsBucket:
+    Description: Associated S3 Bucket to store serverless deployment
+    Value: !Ref ServerlessDeploymentsBucket
+    Export:
+      Name:
+        Fn::Sub: ${AWS::StackName}-ServerlessDeploymentsBucket
+  ServerlessDeploymentsBucketArn:
+    Description: Associated S3 Bucket to store serverless deployment
+    Value: !GetAtt ServerlessDeploymentsBucket.Arn
+    Export:
+      Name:
+        Fn::Sub: ${AWS::StackName}-ServerlessDeploymentsBucketArn
+  SecretKey:
+    Description: Key to encrypt and decrypt service secrets
+    Value: !Ref SecretKey
+    Export:
+      Name:
+        Fn::Sub: ${AWS::StackName}-SecretKey
+  SecretKeyArn:
+    Description: Key to encrypt and decrypt service secrets
+    Value: !GetAtt SecretKey.Arn
+    Export:
+      Name:
+        Fn::Sub: ${AWS::StackName}-SecretKeyArn
+  UserContentsBucket:
+    Description: Associated S3 Bucket to store user contents
+    Value: !Ref UserContentsBucket
+    Export:
+      Name:
+        Fn::Sub: ${AWS::StackName}-UserContentsBucket
+  UserContentsBucketArn:
+    Description: Associated S3 Bucket to store user contents
+    Value: !GetAtt UserContentsBucket.Arn
+    Export:
+      Name:
+        Fn::Sub: ${AWS::StackName}-UserContentsBucketArn
+  UserContentsKey:
+    Description: Key to encrypt and decrypt user contents
+    Value: !Ref UserContentsKey
+    Export:
+      Name:
+        Fn::Sub: ${AWS::StackName}-UserContentsKey
+  UserContentsKeyArn:
+    Description: Key to encrypt and decrypt user contents
+    Value: !GetAtt UserContentsKey.Arn
+    Export:
+      Name:
+        Fn::Sub: ${AWS::StackName}-UserContentsKeyArn
+  MongoDbEncryptionKey:
+    Description: Key to encrypt and decrypt Mongo Atlas db
+    Value: !Ref MongoDbEncryptionKey
+    Export:
+      Name:
+        Fn::Sub: ${AWS::StackName}-MongoDbEncryptionKey
+  MongoDbEncryptionKeyArn:
+    Description: Key to encrypt and decrypt Mongo Atlas db
+    Value: !GetAtt MongoDbEncryptionKey.Arn
+    Export:
+      Name:
+        Fn::Sub: ${AWS::StackName}-MongoDbEncryptionKeyArn
+  ClusterArn:
+    Description: ARN for Cluster
+    Value: !GetAtt Cluster.Arn
+    Export:
+      Name:
+        Fn::Sub: ${AWS::StackName}-ClusterArn
+  ACMCert:
+    Description: ARN for Service Certificate
+    Value: !Ref ACMCert
+    Export:
+      Name:
+        Fn::Sub: ${AWS::StackName}-ACMCert
+
+  ExternalLoadBalancerSecurityGroup:
+    Description: Security group for internet facing Load balancers
+    Value: !Ref ExternalLoadBalancerSecurityGroup
+    Export:
+      Name:
+        Fn::Sub: ${AWS::StackName}-ExternalLoadBalancerSecurityGroup
+  InternalLoadBalancerSecurityGroup:
+    Description: Security group for internal Load balancers
+    Value: !Ref InternalLoadBalancerSecurityGroup
+    Export:
+      Name:
+        Fn::Sub: ${AWS::StackName}-InternalLoadBalancerSecurityGroup
+  ServicesSecurityGroup:
+    Description: Security group for internal service
+    Value: !Ref ServicesSecurityGroup
+    Export:
+      Name:
+        Fn::Sub: ${AWS::StackName}-ServicesSecurityGroup
